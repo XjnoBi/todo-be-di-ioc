@@ -30,60 +30,108 @@ class BaseRepository
         }
     }
 
+    protected function select(string $table, array $fields, ?array $whereFields = [], array $orderBy = [], $limit = null)
+    {
+        try {
+            $sql = "SELECT " . implode(', ', $fields) . " FROM $table";
+
+            if (!empty($whereFields)) {
+                $where = [];
+                foreach ($whereFields as $field => $value) {
+                    $where[] = "$field = :w$field";
+                }
+                $sql .= " WHERE " . implode(' AND ', $where);
+            }
+
+            if (!empty($orderBy)) {
+                $sql .= " ORDER BY " . implode(', ', $orderBy);
+            }
+
+            if ($limit !== null) {
+                $sql .= " LIMIT $limit";
+            }
+
+            $statement = $this->db->prepare($sql);
+
+            foreach ($whereFields as $field => $value) {
+                $statement->bindValue(":w$field", $value);
+            }
+
+            $statement->execute();
+            return $statement->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            return null;
+        }
+    }
+
     protected function insert(string $table, array $fields)
     {
-        $sql = "INSERT INTO $table (" . implode(',', array_keys($fields)) . ") VALUES (:" . implode(', :', array_keys($fields)) . ")";
-        $statement = $this->db->prepare($sql);
+        try {
+            $sql = "INSERT INTO $table (" . implode(',', array_keys($fields)) . ") VALUES (:" . implode(', :', array_keys($fields)) . ")";
+            $statement = $this->db->prepare($sql);
 
-        foreach ($fields as $field => $value) {
-            $statement->bindValue(":$field", $value);
+            foreach ($fields as $field => $value) {
+                $statement->bindValue(":$field", $value);
+            }
+
+            $statement->execute();
+            return $this->db->lastInsertId();
+        } catch (\PDOException $e) {
+            return null;
         }
-
-        $statement->execute();
-        return $this->db->lastInsertId();
     }
 
     protected function update(string $table, array $fields, $whereFields)
     {
-        $sql = "UPDATE $table SET ";
+        try {
+            $sql = "UPDATE $table SET ";
 
-        $set = [];
-        foreach ($fields as $field => $value) {
-            $set[] = "$field = :s$field";
+            $set = [];
+            foreach ($fields as $field => $value) {
+                $set[] = "$field = :s$field";
+            }
+
+            $where = [];
+            foreach ($whereFields as $field => $value) {
+                $where[] = "$field = :w$field";
+            }
+
+            $statement = $this->db->prepare($sql . implode(', ', $set) . " WHERE " . implode(' AND ', $where));
+            foreach ($fields as $field => $value) {
+                $statement->bindValue(":s$field", $value);
+            }
+
+            foreach ($whereFields as $field => $value) {
+                $statement->bindValue(":w$field", $value);
+            }
+
+            $statement->execute();
+            return true;
+        } catch (\PDOException $e) {
+            return false;
         }
-
-        $where = [];
-        foreach ($whereFields as $field => $value) {
-            $where[] = "$field = :w$field";
-        }
-
-        $statement = $this->db->prepare($sql . implode(', ', $set) . " WHERE " . implode(' AND ', $where));
-        foreach ($fields as $field => $value) {
-            $statement->bindValue(":s$field", $value);
-        }
-
-        foreach ($whereFields as $field => $value) {
-            $statement->bindValue(":w$field", $value);
-        }
-
-        $statement->execute();
     }
 
     protected function delete(string $table, $whereFields)
     {
-        $sql = "DELETE FROM $table WHERE ";
+        try {
+            $sql = "DELETE FROM $table WHERE ";
 
-        $where = [];
-        foreach ($whereFields as $field => $value) {
-            $where[] = "$field = :w$field";
+            $where = [];
+            foreach ($whereFields as $field => $value) {
+                $where[] = "$field = :w$field";
+            }
+
+            $statement = $this->db->prepare($sql . implode(' AND ', $where));
+            foreach ($whereFields as $field => $value) {
+                $statement->bindValue(":w$field", $value);
+            }
+
+            $statement->execute();
+            return true;
+        } catch (\PDOException $e) {
+            return false;
         }
-
-        $statement = $this->db->prepare($sql . implode(' AND ', $where));
-        foreach ($whereFields as $field => $value) {
-            $statement->bindValue(":w$field", $value);
-        }
-
-        $statement->execute();
     }
 
     protected function softDelete(string $table, $whereFields)
@@ -92,6 +140,6 @@ class BaseRepository
             'is_deleted' => true,
             'deleted_ts' => date('Y-m-d H:i:s')
         ];
-        $this->update($table, $fields, $whereFields);
+        return $this->update($table, $fields, $whereFields);
     }
 }
