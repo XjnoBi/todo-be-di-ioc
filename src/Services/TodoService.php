@@ -3,14 +3,17 @@
 namespace App\Services;
 
 use App\Repositories\TodoRepository;
+use App\Services\TextFormattingService;
 
 class TodoService
 {
     private $todoRepository;
+    private $textformatter;
 
-    public function __construct(TodoRepository $todoRepository)
+    public function __construct(TodoRepository $todoRepository, TextFormattingService $textFormattingService)
     {
         $this->todoRepository = $todoRepository;
+        $this->textformatter = $textFormattingService;
     }
 
     public function getAllTodos()
@@ -25,6 +28,7 @@ class TodoService
 
     public function addOneTodo(array $params)
     {
+        $params['title'] = $this->formatTitle($params['title']);
         $this->todoRepository->addOne($params);
     }
 
@@ -33,6 +37,8 @@ class TodoService
         if (array_key_exists('id', $params) && !empty($params['id'])) {
             $id = $params['id'];
             unset($params['id']);
+
+            $params['title'] = $this->formatTitle($params['title']);
 
             $this->todoRepository->updateOne($params, $id);
         }
@@ -44,5 +50,13 @@ class TodoService
             $id = $params['id'];
             $this->todoRepository->deleteOne($id);
         }
+    }
+
+    private function formatTitle(string $title): string
+    {
+        $title = $this->textformatter->trim($title);
+        $title = $this->textformatter->propercase($title);
+
+        return $title;
     }
 }
