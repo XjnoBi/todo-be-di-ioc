@@ -40,15 +40,17 @@ class TodoService
     {
         $title = $this->formatText($params['title']);
         $id = $this->todoRepository->addOne($title);
+
         if ($id) {
             // bump up sequence of existing todo items
+            $runningSequence = 1;
             $activeTodos = $this->getActiveTodos();
             foreach ($activeTodos as $todo) {
-                if ($todo['id'] == $id) {
-                    continue;
+                if ($todo['id'] != $id) {
+                    $runningSequence++;
                 }
 
-                $todo['sequence'] = $todo['sequence'] + 1;
+                $todo['sequence'] = $runningSequence;
                 $this->todoRepository->updateOne($todo, $todo['id']);
             }
 
@@ -85,38 +87,24 @@ class TodoService
                 return false;
             }
 
-            if (array_key_exists('sequence', $params) && is_int($params['sequence'])) {
+            if (array_key_exists('sequence', $params) && !empty($params['sequence'])) {
                 if ($oldTodo['sequence'] == $params['sequence']) {
                     return true;
                 }
 
-                $isMovingUp = $oldTodo['sequence'] > $params['sequence'];
-
+                $runningSequence = 1;
                 $activeTodos = $this->getActiveTodos();
                 foreach ($activeTodos as $todo) {
-                    if ($todo['id'] == $id) {
-                        continue;
-                    }
-
-                    if ($isMovingUp) {
-                        // skip if higher in order
-                        if ($todo['sequence'] < $params['sequence']) {
-                            continue;
+                    if ($todo['id'] != $id) {
+                        if ($todo['sequence'] >= $params['sequence']) {
+                            $runningSequence++;
+                        } else {
+                            $runningSequence--;
                         }
-
-                        $todo['sequence'] = $todo['sequence'] + 1;
-                        $this->todoRepository->updateOne($todo, $todo['id']);
                     }
 
-                    if (!$isMovingUp) {
-                        // skip if lower in order
-                        if ($todo['sequence'] > $params['sequence']) {
-                            continue;
-                        }
-
-                        $todo['sequence'] = $todo['sequence'] - 1;
-                        $this->todoRepository->updateOne($todo, $todo['id']);
-                    }
+                    $todo['sequence'] = $runningSequence;
+                    $this->todoRepository->updateOne($todo, $todo['id']);
                 }
             }
 
