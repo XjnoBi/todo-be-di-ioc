@@ -118,7 +118,15 @@ class TodoService
     {
         if (array_key_exists('id', $params) && !empty($params['id'])) {
             $id = $params['id'];
-            return $this->todoRepository->deleteOne($id);
+
+            $success = $this->todoRepository->deleteOne($id);
+            if ($success) {
+                $activeTodos = $this->getActiveTodos();
+                foreach ($activeTodos as $index => $todo) {
+                    $todo['sequence'] = $index + 1;
+                    $this->todoRepository->updateOne($todo, $todo['id']);
+                }
+            }
         }
     }
 
