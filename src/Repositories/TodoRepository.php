@@ -30,7 +30,7 @@ class TodoRepository extends BaseRepository
      */
     public function getActive(): array
     {
-        return $this->select($this->table, ['id', 'title', 'is_completed', 'completed_ts', 'sequence'], ['is_deleted' => false], ['sequence']);
+        return $this->select($this->table, ['id', 'title', 'is_completed', 'completed_ts', 'sequence'], ['is_deleted' => false], ['is_completed', 'completed_ts desc', 'sequence']);
     }
 
     /**
@@ -76,7 +76,8 @@ class TodoRepository extends BaseRepository
     {
         $payload = [
             'title' => $params['title'],
-            'is_completed' => $params['is_completed'] ? 1 : 0
+            'is_completed' => $params['is_completed'] ? 1 : 0,
+            'completed_ts' => $params['completed_ts']
         ];
 
         if (array_key_exists('sequence', $params)) {

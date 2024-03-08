@@ -82,6 +82,12 @@ class TodoService
             $params['title'] = $this->formatText($params['title']);
             $oldTodo = $this->todoRepository->getOne($id)[0];
 
+            if ($params['is_completed'] && !$oldTodo['is_completed']) {
+                $params['completed_ts'] = date('Y-m-d H:i:s');
+            } else if (!$params['is_completed']) {
+                $params['completed_ts'] = null;
+            }
+
             $success = $this->todoRepository->updateOne($params, $id);
             if (!$success) {
                 return false;
